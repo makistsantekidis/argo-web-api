@@ -30,6 +30,7 @@ import (
     "net/http"
     "github.com/gorilla/mux"
 
+    "github.com/argoeu/argo-web-api/app/results"
     "github.com/argoeu/argo-web-api/app/availabilityProfiles"
     "github.com/argoeu/argo-web-api/app/endpointGroupAvailability"
     "github.com/argoeu/argo-web-api/app/factors"
@@ -63,7 +64,7 @@ type Routes []Route
 type SubRoutes []SubRoute
 
 var subroutes = SubRoutes{
-
+    {"results", "/results", results.HandleSubrouter}
 
 }
 

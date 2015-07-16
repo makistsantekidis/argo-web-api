@@ -29,6 +29,8 @@ package main
 import (
 	"net/http"
 
+    "github.com/argoeu/argo-web-api/utils/logging"
+
 	"github.com/gorilla/mux"
 )
 
@@ -39,7 +41,7 @@ func NewRouter() *mux.Router {
 		var handler http.Handler
 
 		handler = route.HandlerFunc
-		handler = Logger(handler, route.Name)
+		handler = logging.Logger(handler, route.Name)
 
 		router.
 			PathPrefix("/api/v1").
@@ -48,6 +50,7 @@ func NewRouter() *mux.Router {
 			Name(route.Name).
 			Handler(handler)
 	}
+
     for _, subroute := range subroutes{
         subrouter := router.PathPrefix(subroute.Pattern).Subrouter()
         subroute.SubrouterHandler(subrouter)
