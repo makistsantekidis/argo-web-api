@@ -24,7 +24,7 @@
  * Framework Programme (contract # INFSO-RI-261323)
  */
 
-package main
+package routing
 
 import (
     "net/http"
@@ -64,8 +64,8 @@ type Routes []Route
 type SubRoutes []SubRoute
 
 var subroutes = SubRoutes{
-    {"results", "/results", results.HandleSubrouter}
-
+    {"results", "/results", results.HandleSubrouter},
+    
 }
 
 var routes = Routes{

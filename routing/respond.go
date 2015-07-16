@@ -24,7 +24,7 @@
  * Framework Programme (contract # INFSO-RI-261323)
  */
 
-package main
+package routing
 
 import (
 	"bytes"

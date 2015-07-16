@@ -24,7 +24,7 @@
  * Framework Programme (contract # INFSO-RI-261323)
  */
 
-package main
+package routing
 
 import (
 	"net/http"
@@ -52,7 +52,10 @@ func NewRouter() *mux.Router {
 	}
 
     for _, subroute := range subroutes{
-        subrouter := router.PathPrefix(subroute.Pattern).Subrouter()
+        subrouter := router.
+                     PathPrefix("/api/v2")
+                     PathPrefix(subroute.Pattern).
+                     Subrouter()
         subroute.SubrouterHandler(subrouter)
     }
 
