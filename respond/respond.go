@@ -24,17 +24,20 @@
  * Framework Programme (contract # INFSO-RI-261323)
  */
 
-package routing
+package respond
 
 import (
 	"bytes"
 	"compress/gzip"
 	"compress/zlib"
 	"fmt"
-	"github.com/argoeu/argo-web-api/utils/config"
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/argoeu/argo-web-api/utils/caches"
+	"github.com/argoeu/argo-web-api/utils/config"
+	"github.com/argoeu/argo-web-api/utils/logging"
 )
 
 type list []interface{}
@@ -42,18 +45,48 @@ type list []interface{}
 const zuluForm = "2006-01-02T15:04:05Z"
 const ymdForm = "20060102"
 
-// The respond function that will be called to answer to http requests to the PI
-func Respond(fn func(r *http.Request, cfg config.Config) (int, http.Header, []byte, error)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+type AppHandler struct {
+	Cfg     config.Config
+	handler func(config.Config, http.ResponseWriter, *http.Request) (int, http.Header, []byte, error)
+}
 
-		code, header, output, err := fn(r, cfg)
+func (ah *AppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Updated to pass ah.appContext as a parameter to our handler type.
+	code, header, output, err := ah.handler(ah.Cfg, w, r)
+	if err != nil {
+		log.Printf("HTTP %d: %q, %s, %s", code, err, header, output)
+		switch code {
+		case http.StatusNotFound:
+			http.NotFound(w, r)
+			// And if we wanted a friendlier error page, we can
+			// now leverage our context instance - e.g.
+			// err := ah.renderTemplate(w, "http_404.tmpl", nil)
+		case http.StatusInternalServerError:
+			http.Error(w, http.StatusText(code), code)
+		default:
+			http.Error(w, http.StatusText(code), code)
+		}
+	}
+}
+
+// Respond will be called to answer to http requests to the PI
+func (ah *AppHandler) Respond(fn func(r *http.Request, cfg config.Config) (int, http.Header, []byte, error), name string) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		defer func() {
+			if r := recover(); r != nil {
+				logging.HandleError(r)
+			}
+		}()
+
+		code, header, output, err := fn(r, ah.Cfg)
 
 		if code == http.StatusInternalServerError {
 			log.Panic("Internal Server Error:", err)
 		}
 
 		encoding := strings.Split(r.Header.Get("Accept-Encoding"), ",")[0] //get the first accepted encoding
-		if (cfg.Server.Gzip) == true && r.Header.Get("Accept-Encoding") != "" {
+		if (ah.Cfg.Server.Gzip) == true && r.Header.Get("Accept-Encoding") != "" {
 			var b bytes.Buffer
 			if encoding == "gzip" {
 				writer := gzip.NewWriter(&b)
@@ -81,14 +114,15 @@ func Respond(fn func(r *http.Request, cfg config.Config) (int, http.Header, []by
 
 		w.WriteHeader(code)
 		w.Write(output)
-	}
+	})
+
 }
 
-//Reset the cache if it is set
-func ResetCache(w http.ResponseWriter, r *http.Request) []byte {
+// ResetCache resets the cache if it is set
+func ResetCache(w http.ResponseWriter, r *http.Request, cfg config.Config) []byte {
 	answer := ""
 	if cfg.Server.Cache == true {
-		httpcache.Clear()
+		caches.ResetCache()
 		answer = "Cache Emptied"
 	}
 	answer = "No Caching is active"

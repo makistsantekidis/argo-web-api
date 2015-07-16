@@ -27,21 +27,21 @@
 package routing
 
 import (
-	"net/http"
-
-    "github.com/argoeu/argo-web-api/utils/logging"
+	"github.com/argoeu/argo-web-api/respond"
+	"github.com/argoeu/argo-web-api/utils/config"
 
 	"github.com/gorilla/mux"
 )
 
-func NewRouter() *mux.Router {
+func NewRouter(cfg config.Config) *mux.Router {
 
+	apphandler := respond.appHandler{cfg}
 	router := mux.NewRouter() //.StrictSlash(true)
 	for _, route := range routes {
-		var handler http.Handler
+		// var handler http.Handler
 
-		handler = route.HandlerFunc
-		handler = logging.Logger(handler, route.Name)
+		handler := route.HandlerFunc
+		handler = respond.Respond(handler, route.Name, cfg)
 
 		router.
 			PathPrefix("/api/v1").
@@ -50,14 +50,19 @@ func NewRouter() *mux.Router {
 			Name(route.Name).
 			Handler(handler)
 	}
+	router.Walk(apphandler.walker)
 
-    for _, subroute := range subroutes{
-        subrouter := router.
-                     PathPrefix("/api/v2")
-                     PathPrefix(subroute.Pattern).
-                     Subrouter()
-        subroute.SubrouterHandler(subrouter)
-    }
+	for _, subroute := range subroutes {
+		subrouter := router.
+			PathPrefix("/api/v2").
+			PathPrefix(subroute.Pattern).
+			Subrouter()
+		subroute.SubrouterHandler(subrouter, apphandler)
+	}
 
 	return router
+}
+
+func (apphandler *appHandler) walker(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+	route.Handler(apphandler.ServeHTTP(route.GetHandler()))
 }

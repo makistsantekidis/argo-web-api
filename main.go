@@ -31,13 +31,14 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+
 	"github.com/argoeu/argo-web-api/routing"
 )
 
 func main() {
-
+	init()
 	//Create the server router
-	mainRouter := routing.NewRouter()
+	mainRouter := routing.NewRouter(cfg)
 
 	http.Handle("/", mainRouter)
 

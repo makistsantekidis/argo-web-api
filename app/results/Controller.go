@@ -29,16 +29,24 @@ package results
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
+
+	"labix.org/v2/mgo/bson"
 
 	"github.com/argoeu/argo-web-api/utils/authentication"
 	"github.com/argoeu/argo-web-api/utils/caches"
 	"github.com/argoeu/argo-web-api/utils/config"
 	"github.com/argoeu/argo-web-api/utils/mongo"
+	"github.com/gorilla/mux"
 )
 
+// THIS CONTROLLER IS JUST A DEMO AND IS NOT SOMETHING THAT WORKS.
+// TODO: WRITE AN ACTUAL CONTROLLER FOR AVAILABILITY
+
 // List endpoint group availabilities according to the http request
-func List(r *http.Request, cfg config.Config) (int, http.Header, []byte, error) {
+func ListEndpointGroupResults(r *http.Request, cfg config.Config) (int, http.Header, []byte, error) {
 
 	//STANDARD DECLARATIONS START
 	code := http.StatusOK
@@ -47,7 +55,6 @@ func List(r *http.Request, cfg config.Config) (int, http.Header, []byte, error) 
 	err := error(nil)
 	contentType := "text/xml"
 	charset := "utf-8"
-
 	//STANDARD DECLARATIONS END
 	tenantDbConfig, err := authentication.AuthenticateTenant(r.Header, cfg)
 	if err != nil {
@@ -61,18 +68,20 @@ func List(r *http.Request, cfg config.Config) (int, http.Header, []byte, error) 
 
 	// Parse the request into the input
 	urlValues := r.URL.Query()
+	vars := mux.Vars(r)
 
-	input := EndpointGroupAvailabilityInput{
-		StartTime:   urlValues.Get("start_time"),
-		EndTime:     urlValues.Get("end_time"),
-		Granularity: urlValues.Get("granularity"),
-		Format:      urlValues.Get("format"),
-		Job:         urlValues.Get("job"),
-		GroupName:   urlValues["group_name"],
-		SuperGroup:  urlValues["supergroup_name"],
+	lgroup_name := vars["lgroup_name"]
+	if lgroup_name == "" {
+		lgroup_name = vars["group_name"]
 	}
 
-	if strings.ToLower(input.Format) == "json" {
+	input := endpointGroupResultQuery{
+		Name:        lgroup_name,
+		Granularity: urlValues.Get("granularity"),
+		Format:      strings.ToLower(urlValues.Get("format")),
+	}
+
+	if input.Format == "json" {
 		contentType = "application/json"
 	}
 
@@ -91,7 +100,7 @@ func List(r *http.Request, cfg config.Config) (int, http.Header, []byte, error) 
 		return code, h, output, err
 	}
 
-	results := []MongoInterface{}
+	results := []EndpointGroupInterface{}
 
 	// Select the granularity of the search daily/monthly
 	if len(input.Granularity) == 0 || strings.ToLower(input.Granularity) == "daily" {
@@ -125,4 +134,105 @@ func List(r *http.Request, cfg config.Config) (int, http.Header, []byte, error) 
 	}
 
 	return code, h, output, err
+}
+
+func prepareFilter(input endpointGroupResultQuery) bson.M {
+	ts, _ := time.Parse(zuluForm, input.StartTime)
+	te, _ := time.Parse(zuluForm, input.EndTime)
+	tsYMD, _ := strconv.Atoi(ts.Format(ymdForm))
+	teYMD, _ := strconv.Atoi(te.Format(ymdForm))
+
+	// Construct the query to mongodb based on the input
+	filter := bson.M{
+		"date":   bson.M{"$gte": tsYMD, "$lte": teYMD},
+		"report": input.Report,
+	}
+
+	if len(input.Name) > 0 {
+		filter["name"] = bson.M{"$in": input.Name}
+	}
+
+	if len(input.Group) > 0 {
+		filter["supergroup"] = bson.M{"$in": input.Group}
+	}
+
+	return filter
+}
+
+// Daily query to aggregate daily results from mongodb
+func Daily(input endpointGroupResultQuery) []bson.M {
+	filter := prepareFilter(input)
+
+	// Mongo aggregation pipeline
+	// Select all the records that match q
+	// Project to select just the first 8 digits of the date YYYYMMDD
+	// Sort by profile->supergroup->endpointGroup->datetime
+	query := []bson.M{
+		{"$match": filter},
+		{"$project": bson.M{
+			"date":         bson.M{"$substr": list{"$date", 0, 8}},
+			"availability": 1,
+			"reliability":  1,
+			"report":       1,
+			"supergroup":   1,
+			"name":         1}},
+		{"$sort": bson.D{
+			{"report", 1},
+			{"supergroup", 1},
+			{"name", 1},
+			{"date", 1}}}}
+
+	return query
+}
+
+// Monthly query to aggregate monthly results from mongodb
+func Monthly(input endpointGroupResultQuery) []bson.M {
+
+	filter := prepareFilter(input)
+
+	// Mongo aggregation pipeline
+	// Select all the records that match q
+	// Group them by the first six digits of their date (YYYYMM), their supergroup, their endpointGroup, their profile, etc...
+	// from that group find the average of the uptime, u, downtime
+	// Project the result to a better format and do this computation
+	// availability = (avgup/(1.00000001 - avgu))*100
+	// reliability = (avgup/((1.00000001 - avgu)-avgd))*100
+	// Sort the results by namespace->profile->supergroup->endpointGroup->datetime
+
+	query := []bson.M{
+		{"$match": filter},
+		{"$group": bson.M{
+			"_id": bson.M{
+				"date":       bson.M{"$substr": list{"$date", 0, 6}},
+				"name":       "$name",
+				"supergroup": "$supergroup",
+				"report":     "$report"},
+			"avguptime": bson.M{"$avg": "$uptime"},
+			"avgunkown": bson.M{"$avg": "$unknown"},
+			"avgdown":   bson.M{"$avg": "$downtime"}}},
+		{"$project": bson.M{
+			"date":       "$_id.date",
+			"name":       "$_id.name",
+			"report":     "$_id.report",
+			"supergroup": "$_id.supergroup",
+			"avguptime":  1,
+			"avgunkown":  1,
+			"avgdown":    1,
+			"availability": bson.M{
+				"$multiply": list{
+					bson.M{"$divide": list{
+						"$avguptime", bson.M{"$subtract": list{1.00000001, "$avgunkown"}}}},
+					100}},
+			"reliability": bson.M{
+				"$multiply": list{
+					bson.M{"$divide": list{
+						"$avguptime", bson.M{"$subtract": list{bson.M{"$subtract": list{1.00000001, "$avgunkown"}}, "$avgdown"}}}},
+					100}}}},
+		{"$sort": bson.D{
+			{"report", 1},
+			{"supergroup", 1},
+			{"name", 1},
+			{"date", 1}}}}
+
+	return query
 }

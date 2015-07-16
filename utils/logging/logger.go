@@ -6,7 +6,14 @@ import (
 	"time"
 )
 
-func Logger(inner http.Handler, name string) http.Handler {
+type RequestError struct {
+	code   int
+	header http.Header
+	output []byte
+	err    error
+}
+
+func Logger(inner http.Handler, name string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
@@ -20,4 +27,8 @@ func Logger(inner http.Handler, name string) http.Handler {
 			time.Since(start),
 		)
 	})
+}
+
+func HandleError(reqErr interface{}) {
+
 }
