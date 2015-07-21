@@ -29,6 +29,8 @@ package routing
 import (
 	"net/http"
 
+	"github.com/argoeu/argo-web-api/respond"
+	"github.com/argoeu/argo-web-api/utils/config"
 	"github.com/gorilla/mux"
 
 	"github.com/argoeu/argo-web-api/app/availabilityProfiles"
@@ -52,13 +54,13 @@ type Route struct {
 	Name        string
 	Method      string
 	Pattern     string
-	HandlerFunc http.HandlerFunc
+	HandlerFunc func(*http.Request, config.Config) (int, http.Header, []byte, error)
 }
 
 type SubRoute struct {
 	Name             string
 	Pattern          string
-	SubrouterHandler func(*mux.Router)
+	SubrouterHandler func(*mux.Router, *respond.ConfHandler)
 }
 
 type Routes []Route
@@ -80,7 +82,7 @@ var routes = Routes{
 	// {"Specific service of group",   "GET",      "/results/{report}/{lgroup_type}/{lgroup}/services/{service}",                      },
 
 	//-----------------------------------Old requests for here on down -------------------------------------------------
-	{"group_availability", "GET", "/group_availability/", endpointGroupAvailability.List},
+	{"group_availability", "GET", "/group_availability", endpointGroupAvailability.List},
 	{"group_groups_availability", "GET", "/group_groups_availability", groupGroupsAvailability.List},
 	{"endpoint_group_availability", "POST", "/endpoint_group_availability", endpointGroupAvailability.List},
 	{"service_flavor_availability", "GET", "/service_flavor_availability", serviceFlavorAvailability.List},
@@ -115,20 +117,20 @@ var routes = Routes{
 	{"recomputation create", "POST", "/recomputations", recomputations.Create},
 	{"recomputation list", "GET", "/recomputations", recomputations.List},
 
-	{"factors list", "GET", "factors", factors.List},
+	{"factors list", "GET", "/factors", factors.List},
 
 	//Status
-	{"status detail list", "GET", "status/metrics/timeline/{group}", statusDetail.List},
+	{"status detail list", "GET", "/status/metrics/timeline/{group}", statusDetail.List},
 
 	//Status Raw Msg
-	{"status message list", "GET", "status/metrics/msg/{hostname}/{service}/{metric}", statusMsg.List},
+	{"status message list", "GET", "/status/metrics/msg/{hostname}/{service}/{metric}", statusMsg.List},
 
 	//Status Endpoints
-	{"status endpoint list", "GET", "status/endpoints/timeline/{hostname}/{service_type}", statusEndpoints.List},
+	{"status endpoint list", "GET", "/status/endpoints/timeline/{hostname}/{service_type}", statusEndpoints.List},
 
 	//Status Services
-	{"status service list", "GET", "status/services/timeline/{group}", statusServices.List},
+	{"status service list", "GET", "/status/services/timeline/{group}", statusServices.List},
 
 	//Status Sites
-	{"status endpoint group list", "GET", "status/sites/timeline/{group}", statusEndpointGroups.List},
+	{"status endpoint group list", "GET", "/status/sites/timeline/{group}", statusEndpointGroups.List},
 }

@@ -30,17 +30,20 @@ import (
 	"crypto/tls"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/argoeu/argo-web-api/routing"
+	"github.com/gorilla/handlers"
 )
 
 func main() {
-	init()
-	//Create the server router
-	mainRouter := routing.NewRouter(cfg)
 
-	http.Handle("/", mainRouter)
+	//Create the server router
+	var mainRouter http.Handler
+	mainRouter = routing.NewRouter(cfg)
+	mainRouter = handlers.CombinedLoggingHandler(os.Stdout, mainRouter)
+	// http.Handle("/", mainRouter)
 
 	//Cache
 	//get_subrouter.HandleFunc("/api/v1/reset_cache", Respond("text/xml", "utf-8", ResetCache))
@@ -60,7 +63,7 @@ func main() {
 		},
 		PreferServerCipherSuites: true,
 	}
-	server := &http.Server{Addr: cfg.Server.Bindip + ":" + strconv.Itoa(cfg.Server.Port), Handler: nil, TLSConfig: config}
+	server := &http.Server{Addr: cfg.Server.Bindip + ":" + strconv.Itoa(cfg.Server.Port), Handler: mainRouter, TLSConfig: config}
 	//Web service binds to server. Requests served over HTTPS.
 
 	// err := server.ListenAndServe(cfg.Server.Cert, cfg.Server.Privkey)

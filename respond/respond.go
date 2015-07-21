@@ -38,6 +38,7 @@ import (
 	"github.com/argoeu/argo-web-api/utils/caches"
 	"github.com/argoeu/argo-web-api/utils/config"
 	"github.com/argoeu/argo-web-api/utils/logging"
+	"github.com/gorilla/mux"
 )
 
 type list []interface{}
@@ -45,32 +46,32 @@ type list []interface{}
 const zuluForm = "2006-01-02T15:04:05Z"
 const ymdForm = "20060102"
 
-type AppHandler struct {
-	Cfg     config.Config
-	handler func(config.Config, http.ResponseWriter, *http.Request) (int, http.Header, []byte, error)
+type ConfHandler struct {
+	Cfg config.Config
+	// handler func(config.Config, http.ResponseWriter, *http.Request) (int, http.Header, []byte, error)
 }
 
-func (ah *AppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// Updated to pass ah.appContext as a parameter to our handler type.
-	code, header, output, err := ah.handler(ah.Cfg, w, r)
-	if err != nil {
-		log.Printf("HTTP %d: %q, %s, %s", code, err, header, output)
-		switch code {
-		case http.StatusNotFound:
-			http.NotFound(w, r)
-			// And if we wanted a friendlier error page, we can
-			// now leverage our context instance - e.g.
-			// err := ah.renderTemplate(w, "http_404.tmpl", nil)
-		case http.StatusInternalServerError:
-			http.Error(w, http.StatusText(code), code)
-		default:
-			http.Error(w, http.StatusText(code), code)
-		}
-	}
-}
+// func (ah *ConfHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+// 	// Updated to pass ah.appContext as a parameter to our handler type.
+// 	code, header, output, err := ah.handler(ah.Cfg, w, r)
+// 	if err != nil {
+// 		log.Printf("HTTP %d: %q, %s, %s", code, err, header, output)
+// 		switch code {
+// 		case http.StatusNotFound:
+// 			http.NotFound(w, r)
+// 			// And if we wanted a friendlier error page, we can
+// 			// now leverage our context instance - e.g.
+// 			// err := ah.renderTemplate(w, "http_404.tmpl", nil)
+// 		case http.StatusInternalServerError:
+// 			http.Error(w, http.StatusText(code), code)
+// 		default:
+// 			http.Error(w, http.StatusText(code), code)
+// 		}
+// 	}
+// }
 
 // Respond will be called to answer to http requests to the PI
-func (ah *AppHandler) Respond(fn func(r *http.Request, cfg config.Config) (int, http.Header, []byte, error), name string) http.HandlerFunc {
+func (ah *ConfHandler) Respond(fn func(r *http.Request, cfg config.Config) (int, http.Header, []byte, error), name string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		defer func() {
@@ -78,7 +79,7 @@ func (ah *AppHandler) Respond(fn func(r *http.Request, cfg config.Config) (int, 
 				logging.HandleError(r)
 			}
 		}()
-
+		fmt.Println("REPLYING")
 		code, header, output, err := fn(r, ah.Cfg)
 
 		if code == http.StatusInternalServerError {
@@ -116,6 +117,11 @@ func (ah *AppHandler) Respond(fn func(r *http.Request, cfg config.Config) (int, 
 		w.Write(output)
 	})
 
+}
+
+func (confhandler *ConfHandler) walker(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+	// route.Handler(route.GetHandler())
+	return nil
 }
 
 // ResetCache resets the cache if it is set

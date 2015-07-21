@@ -27,9 +27,14 @@
 package results
 
 import (
+	"fmt"
 	"net/http"
 
+	"labix.org/v2/mgo/bson"
+
+	"github.com/argoeu/argo-web-api/utils/authentication"
 	"github.com/argoeu/argo-web-api/utils/config"
+	"github.com/argoeu/argo-web-api/utils/mongo"
 
 	"github.com/argoeu/argo-web-api/respond"
 	"github.com/gorilla/mux"
@@ -37,33 +42,62 @@ import (
 
 // HandleSubrouter uses the subrouter for a specific calls and creates a tree of sorts
 // handling each route with a different subrouter
-func HandleSubrouter(s *mux.Router, apphandler *respond.AppHandler) {
+func HandleSubrouter(s *mux.Router, confhandler *respond.ConfHandler) {
 	// Route for request /api/v2/results/
 	// s.Path("/").Handler(routing.Respond())
 
 	// Route for request "/api/v2/results/{report_name}"
-	reportSubrouter := s.PathPrefix("/{report_name}").Subrouter()
+	reportSubrouter := s.Path("/{report_name}").Subrouter()
 	// TODO: list reports with the name {reportn_name}
 	// reportSubrouter.Path("/").Name("reports").Handler(respond.Respond(ListReports, "reports", cfg))
 
 	// Route for request "api/v2/results/{report_name}/{group_type}"
-	groupTypeSubrouter := reportSubrouter.PathPrefix("/{group_type}").Subrouter()
+	groupTypeSubrouter := reportSubrouter.Path("/{group_type}").Subrouter()
 	// TODO: list groups with type {group_type}
-	// groupTypeSubrouter.Path("/").Name("Group_Type").Handler(respond.Respond(List))
+	// groupTypeSubrouter.
+	// 	Path("/").
+	// 	Name("Group_Type").
+	// 	Handler(respond.Respond(...))
+	// TODO: list endpointgroups with type {lgroup_type}
+	// groupTypeSubrouter.
+	// Path("/{group_name}/{lgroup_name}").
+	// Name("EndpointGroup_Type").
+	// Handler(respond.Respond(...))
 
 	// Route for request "api/v2/results/{report_name}/{group_type}/{group_name}"
-	groupSubrouter := groupTypeSubrouter.PathPrefix("/{group_name}").Subrouter()
-	groupSubrouter.Path("/").
+	groupSubrouter := groupTypeSubrouter.Path("/{group_name}").Subrouter()
+	groupSubrouter.
+		Methods("GET").
 		Name("Group Name").
-		MatcherFunc(MatchEndpointGroup(apphandler.Cfg)).
-		Handler(apphandler.Respond(ListEndpointGroupResults, "group name"))
+		MatcherFunc(MatchEndpointGroup(confhandler.Cfg)).
+		Handler(confhandler.Respond(ListEndpointGroupResults, "group name"))
+	groupSubrouter.
+		Methods("GET").
+		Path("/{lgroup_type}/{lgroup_name}").
+		Name("Group/LGroup Names").
+		Handler(confhandler.Respond(ListEndpointGroupResults, "group/lgroup names"))
 
 }
 
 func MatchEndpointGroup(cfg config.Config) mux.MatcherFunc {
 	return func(r *http.Request, routematch *mux.RouteMatch) bool {
-		// vars := mux.Vars(r)
-		//TODO: figure out if vars['group_type'] is group or endpointgroup
+		vars := mux.Vars(r)
+		tenantcfg, err := authentication.AuthenticateTenant(r.Header, cfg)
+		if err != nil {
+			return false
+		}
+		session, err := mongo.OpenSession(tenantcfg)
+		if err != nil {
+			return false
+		}
+		result := bson.M{}
+		err = mongo.FindOne(session, tenantcfg.Db, "endpoint_group_ar", bson.M{"name": vars["group_name"]}, result)
+		if err != nil {
+			fmt.Println("Trying to match ", r.URL)
+			fmt.Println(vars["group_name"], vars)
+
+			return false
+		}
 		return true
 	}
 }

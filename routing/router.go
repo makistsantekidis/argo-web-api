@@ -27,6 +27,8 @@
 package routing
 
 import (
+	"fmt"
+
 	"github.com/argoeu/argo-web-api/respond"
 	"github.com/argoeu/argo-web-api/utils/config"
 
@@ -35,13 +37,13 @@ import (
 
 func NewRouter(cfg config.Config) *mux.Router {
 
-	apphandler := respond.appHandler{cfg}
-	router := mux.NewRouter() //.StrictSlash(true)
+	confhandler := respond.ConfHandler{cfg}
+	router := mux.NewRouter().StrictSlash(true)
 	for _, route := range routes {
 		// var handler http.Handler
 
-		handler := route.HandlerFunc
-		handler = respond.Respond(handler, route.Name, cfg)
+		// handler := route.HandlerFunc
+		handler := confhandler.Respond(route.HandlerFunc, route.Name)
 
 		router.
 			PathPrefix("/api/v1").
@@ -50,19 +52,20 @@ func NewRouter(cfg config.Config) *mux.Router {
 			Name(route.Name).
 			Handler(handler)
 	}
-	router.Walk(apphandler.walker)
 
 	for _, subroute := range subroutes {
 		subrouter := router.
 			PathPrefix("/api/v2").
 			PathPrefix(subroute.Pattern).
 			Subrouter()
-		subroute.SubrouterHandler(subrouter, apphandler)
+		subroute.SubrouterHandler(subrouter, &confhandler)
 	}
-
+	router.Walk(PrintRoutes)
 	return router
 }
 
-func (apphandler *appHandler) walker(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-	route.Handler(apphandler.ServeHTTP(route.GetHandler()))
+func PrintRoutes(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+	url, _ := route.URL("1", "2", "3", "4")
+	fmt.Println(route.GetName(), url)
+	return nil
 }

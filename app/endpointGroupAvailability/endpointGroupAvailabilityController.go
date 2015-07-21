@@ -39,7 +39,7 @@ import (
 
 // List endpoint group availabilities according to the http request
 func List(r *http.Request, cfg config.Config) (int, http.Header, []byte, error) {
-
+	fmt.Println("ASDASDASDASD")
 	//STANDARD DECLARATIONS START
 	code := http.StatusOK
 	h := http.Header{}
