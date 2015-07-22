@@ -69,7 +69,7 @@ func ListEndpointGroupResults(r *http.Request, cfg config.Config) (int, http.Hea
 	// Parse the request into the input
 	urlValues := r.URL.Query()
 	vars := mux.Vars(r)
-
+	fmt.Println(vars)
 	lgroup_name := vars["lgroup_name"]
 	if lgroup_name == "" {
 		lgroup_name = vars["group_name"]
@@ -79,6 +79,9 @@ func ListEndpointGroupResults(r *http.Request, cfg config.Config) (int, http.Hea
 		Name:        lgroup_name,
 		Granularity: urlValues.Get("granularity"),
 		Format:      strings.ToLower(urlValues.Get("format")),
+		StartTime:   urlValues.Get("start_time"),
+		EndTime:     urlValues.Get("end_time"),
+		Report:      vars["report_name"],
 	}
 
 	if input.Format == "json" {
@@ -116,7 +119,6 @@ func ListEndpointGroupResults(r *http.Request, cfg config.Config) (int, http.Hea
 		err = mongo.Pipe(session, tenantDbConfig.Db, "endpoint_group_ar", query, &results)
 	}
 	// mongo.Find(session, tenantDbConfig.Db, "endpoint_group_ar", bson.M{}, "_id", &results)
-
 	if err != nil {
 		code = http.StatusInternalServerError
 		return code, h, output, err
@@ -149,12 +151,13 @@ func prepareFilter(input endpointGroupResultQuery) bson.M {
 	}
 
 	if len(input.Name) > 0 {
-		filter["name"] = bson.M{"$in": input.Name}
+		// filter["name"] = bson.M{"$in": input.Name}
+		filter["name"] = input.Name
 	}
 
-	if len(input.Group) > 0 {
-		filter["supergroup"] = bson.M{"$in": input.Group}
-	}
+	// if len(input.Group) > 0 {
+	// 	filter["supergroup"] = bson.M{"$in": input.Group}
+	// }
 
 	return filter
 }

@@ -27,12 +27,6 @@
 package routing
 
 import (
-	"net/http"
-
-	"github.com/argoeu/argo-web-api/respond"
-	"github.com/argoeu/argo-web-api/utils/config"
-	"github.com/gorilla/mux"
-
 	"github.com/argoeu/argo-web-api/app/availabilityProfiles"
 	"github.com/argoeu/argo-web-api/app/endpointGroupAvailability"
 	"github.com/argoeu/argo-web-api/app/factors"
@@ -49,22 +43,6 @@ import (
 	"github.com/argoeu/argo-web-api/app/statusServices"
 	"github.com/argoeu/argo-web-api/app/tenants"
 )
-
-type Route struct {
-	Name        string
-	Method      string
-	Pattern     string
-	HandlerFunc func(*http.Request, config.Config) (int, http.Header, []byte, error)
-}
-
-type SubRoute struct {
-	Name             string
-	Pattern          string
-	SubrouterHandler func(*mux.Router, *respond.ConfHandler)
-}
-
-type Routes []Route
-type SubRoutes []SubRoute
 
 var subroutes = SubRoutes{
 	{"results", "/results", results.HandleSubrouter},

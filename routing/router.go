@@ -28,12 +28,29 @@ package routing
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/argoeu/argo-web-api/respond"
 	"github.com/argoeu/argo-web-api/utils/config"
 
 	"github.com/gorilla/mux"
 )
+
+type Route struct {
+	Name        string
+	Method      string
+	Pattern     string
+	HandlerFunc func(*http.Request, config.Config) (int, http.Header, []byte, error)
+}
+
+type SubRoute struct {
+	Name             string
+	Pattern          string
+	SubrouterHandler func(*mux.Router, *respond.ConfHandler)
+}
+
+type Routes []Route
+type SubRoutes []SubRoute
 
 func NewRouter(cfg config.Config) *mux.Router {
 
@@ -44,7 +61,6 @@ func NewRouter(cfg config.Config) *mux.Router {
 
 		// handler := route.HandlerFunc
 		handler := confhandler.Respond(route.HandlerFunc, route.Name)
-
 		router.
 			PathPrefix("/api/v1").
 			Methods(route.Method).
@@ -60,12 +76,12 @@ func NewRouter(cfg config.Config) *mux.Router {
 			Subrouter()
 		subroute.SubrouterHandler(subrouter, &confhandler)
 	}
-	router.Walk(PrintRoutes)
+	// router.Walk(PrintRoutes)
 	return router
 }
 
 func PrintRoutes(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-	url, _ := route.URL("1", "2", "3", "4")
+	url, _ := route.URL()
 	fmt.Println(route.GetName(), url)
 	return nil
 }

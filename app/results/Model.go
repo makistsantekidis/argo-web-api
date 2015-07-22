@@ -51,7 +51,7 @@ type endpointGroupResultQuery struct {
 
 type EndpointGroupInterface struct {
 	Name         string  `bson:"name"`
-	Report       string  `bson:"job"`
+	Report       string  `bson:"report"`
 	Date         string  `bson:"date"`
 	Type         string  `bson:"type"`
 	Up           float64 `bson:"uptime"`
@@ -75,7 +75,7 @@ type Availability struct {
 type EndpointGroup struct {
 	XMLName      xml.Name `xml:"EndpointGroup" json:"-"`
 	Name         string   `xml:"name,attr" json:"name"`
-	SuperGroup   string   `xml:"SuperGroup,attr" json:"supergroup"`
+	SuperGroup   string   `xml:"group,attr" json:"group"`
 	Availability []*Availability
 }
 

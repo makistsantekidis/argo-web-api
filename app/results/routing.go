@@ -27,8 +27,8 @@
 package results
 
 import (
-	"fmt"
 	"net/http"
+	"strings"
 
 	"labix.org/v2/mgo/bson"
 
@@ -47,12 +47,12 @@ func HandleSubrouter(s *mux.Router, confhandler *respond.ConfHandler) {
 	// s.Path("/").Handler(routing.Respond())
 
 	// Route for request "/api/v2/results/{report_name}"
-	reportSubrouter := s.Path("/{report_name}").Subrouter()
+	reportSubrouter := s.PathPrefix("/{report_name}").Subrouter()
 	// TODO: list reports with the name {reportn_name}
 	// reportSubrouter.Path("/").Name("reports").Handler(respond.Respond(ListReports, "reports", cfg))
 
 	// Route for request "api/v2/results/{report_name}/{group_type}"
-	groupTypeSubrouter := reportSubrouter.Path("/{group_type}").Subrouter()
+	groupTypeSubrouter := reportSubrouter.PathPrefix("/{group_type}").Subrouter()
 	// TODO: list groups with type {group_type}
 	// groupTypeSubrouter.
 	// 	Path("/").
@@ -65,14 +65,15 @@ func HandleSubrouter(s *mux.Router, confhandler *respond.ConfHandler) {
 	// Handler(respond.Respond(...))
 
 	// Route for request "api/v2/results/{report_name}/{group_type}/{group_name}"
-	groupSubrouter := groupTypeSubrouter.Path("/{group_name}").Subrouter()
-	groupSubrouter.
+	// matches only endpoint groups
+	groupSubrouter := groupTypeSubrouter.PathPrefix("/{group_name}").Subrouter()
+	groupSubrouter.Path("/").
 		Methods("GET").
 		Name("Group Name").
 		MatcherFunc(MatchEndpointGroup(confhandler.Cfg)).
 		Handler(confhandler.Respond(ListEndpointGroupResults, "group name"))
-	groupSubrouter.
-		Methods("GET").
+
+	groupSubrouter.Methods("GET").
 		Path("/{lgroup_type}/{lgroup_name}").
 		Name("Group/LGroup Names").
 		Handler(confhandler.Respond(ListEndpointGroupResults, "group/lgroup names"))
@@ -81,7 +82,14 @@ func HandleSubrouter(s *mux.Router, confhandler *respond.ConfHandler) {
 
 func MatchEndpointGroup(cfg config.Config) mux.MatcherFunc {
 	return func(r *http.Request, routematch *mux.RouteMatch) bool {
-		vars := mux.Vars(r)
+		// vars := mux.Vars(r)
+		// name := vars["group_name"]
+		// or
+		// name := routematch.Vars
+		// But for some reason none of these work so this is a workaround:
+		// TODO: open issue on gorilla/mux issue tracker
+
+		name := strings.Split(strings.Split(strings.Split(r.URL.String(), "results/")[1], "/")[2], "?")[0]
 		tenantcfg, err := authentication.AuthenticateTenant(r.Header, cfg)
 		if err != nil {
 			return false
@@ -91,11 +99,8 @@ func MatchEndpointGroup(cfg config.Config) mux.MatcherFunc {
 			return false
 		}
 		result := bson.M{}
-		err = mongo.FindOne(session, tenantcfg.Db, "endpoint_group_ar", bson.M{"name": vars["group_name"]}, result)
+		err = mongo.FindOne(session, tenantcfg.Db, "endpoint_group_ar", bson.M{"name": name}, result)
 		if err != nil {
-			fmt.Println("Trying to match ", r.URL)
-			fmt.Println(vars["group_name"], vars)
-
 			return false
 		}
 		return true

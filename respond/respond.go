@@ -79,7 +79,6 @@ func (ah *ConfHandler) Respond(fn func(r *http.Request, cfg config.Config) (int,
 				logging.HandleError(r)
 			}
 		}()
-		fmt.Println("REPLYING")
 		code, header, output, err := fn(r, ah.Cfg)
 
 		if code == http.StatusInternalServerError {

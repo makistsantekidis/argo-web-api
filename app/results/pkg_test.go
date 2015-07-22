@@ -27,12 +27,16 @@
 package results
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
 
 	"code.google.com/p/gcfg"
+	"github.com/argoeu/argo-web-api/respond"
 	"github.com/argoeu/argo-web-api/utils/config"
+	"github.com/gorilla/context"
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/suite"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
@@ -41,6 +45,7 @@ import (
 type endpointGroupAvailabilityTestSuite struct {
 	suite.Suite
 	cfg                       config.Config
+	router                    *mux.Router
 	tenantDbConf              config.MongoConfig
 	tenantpassword            string
 	tenantusername            string
@@ -74,6 +79,11 @@ func (suite *endpointGroupAvailabilityTestSuite) SetupTest() {
 	suite.tenantDbConf.Username = "dbuser"
 	suite.tenantDbConf.Store = "ar"
 	suite.clientkey = "secretkey"
+
+	// Create Router
+	confHandler := respond.ConfHandler{suite.cfg}
+	suite.router = mux.NewRouter().PathPrefix("/api/v2/results").Subrouter()
+	HandleSubrouter(suite.router, &confHandler)
 
 	// seed mongo
 	session, err := mgo.Dial(suite.cfg.MongoDB.Host)
@@ -233,10 +243,18 @@ func (suite *endpointGroupAvailabilityTestSuite) SetupTest() {
 // TestListEndpointGroupAvailability test if daily results are returned correctly
 func (suite *endpointGroupAvailabilityTestSuite) TestListEndpointGroupAvailability() {
 
-	request, _ := http.NewRequest("GET", "/api/v1/endpoint_group_availability?start_time=2015-06-20T12:00:00Z&end_time=2015-06-23T23:00:00Z&report=Report_A&granularity=daily&group_name=ST01&group_name=ST02", strings.NewReader(""))
-	request.Header.Set("x-api-key", suite.clientkey)
-	code, _, output, _ := ListEndpointGroupResults(request, suite.cfg)
+	request, _ := http.NewRequest("GET", "/api/v2/results/Report_A/SITE/ST01?start_time=2015-06-20T12:00:00Z&end_time=2015-06-23T23:00:00Z&granularity=daily", strings.NewReader(""))
 
+	request.Header.Set("x-api-key", suite.clientkey)
+	vars := map[string]string{}
+	vars["report_name"] = "Report_A"
+	vars["group_type"] = "SITE"
+	vars["group_name"] = "ST01"
+	// context.Set(request, 0, vars)
+	context.DefaultContext.Set(request, mux.ContextKey(0), vars)
+
+	code, _, output, _ := ListEndpointGroupResults(request, suite.cfg)
+	fmt.Println(string(output))
 	endpointGrouAvailabitiyXML := ` <root>
    <Report name="Report_A">
      <EndpointGroup name="ST01" SuperGroup="GROUP_A">

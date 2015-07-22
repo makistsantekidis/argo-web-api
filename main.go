@@ -43,7 +43,8 @@ func main() {
 	var mainRouter http.Handler
 	mainRouter = routing.NewRouter(cfg)
 	mainRouter = handlers.CombinedLoggingHandler(os.Stdout, mainRouter)
-	// http.Handle("/", mainRouter)
+	// mainRouter = handlers.CompressHandler(mainRouter)
+	http.Handle("/", mainRouter)
 
 	//Cache
 	//get_subrouter.HandleFunc("/api/v1/reset_cache", Respond("text/xml", "utf-8", ResetCache))
@@ -63,7 +64,7 @@ func main() {
 		},
 		PreferServerCipherSuites: true,
 	}
-	server := &http.Server{Addr: cfg.Server.Bindip + ":" + strconv.Itoa(cfg.Server.Port), Handler: mainRouter, TLSConfig: config}
+	server := &http.Server{Addr: cfg.Server.Bindip + ":" + strconv.Itoa(cfg.Server.Port), Handler: nil, TLSConfig: config}
 	//Web service binds to server. Requests served over HTTPS.
 
 	// err := server.ListenAndServe(cfg.Server.Cert, cfg.Server.Privkey)
