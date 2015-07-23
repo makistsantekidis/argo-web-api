@@ -29,13 +29,13 @@ package results
 import (
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"code.google.com/p/gcfg"
 	"github.com/argoeu/argo-web-api/respond"
 	"github.com/argoeu/argo-web-api/utils/config"
-	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/suite"
 	"labix.org/v2/mgo"
@@ -46,6 +46,7 @@ type endpointGroupAvailabilityTestSuite struct {
 	suite.Suite
 	cfg                       config.Config
 	router                    *mux.Router
+	confHandler               respond.ConfHandler
 	tenantDbConf              config.MongoConfig
 	tenantpassword            string
 	tenantusername            string
@@ -81,9 +82,9 @@ func (suite *endpointGroupAvailabilityTestSuite) SetupTest() {
 	suite.clientkey = "secretkey"
 
 	// Create Router
-	confHandler := respond.ConfHandler{suite.cfg}
+	suite.confHandler = respond.ConfHandler{suite.cfg}
 	suite.router = mux.NewRouter().PathPrefix("/api/v2/results").Subrouter()
-	HandleSubrouter(suite.router, &confHandler)
+	HandleSubrouter(suite.router, &suite.confHandler)
 
 	// seed mongo
 	session, err := mgo.Dial(suite.cfg.MongoDB.Host)
@@ -242,36 +243,32 @@ func (suite *endpointGroupAvailabilityTestSuite) SetupTest() {
 
 // TestListEndpointGroupAvailability test if daily results are returned correctly
 func (suite *endpointGroupAvailabilityTestSuite) TestListEndpointGroupAvailability() {
+	suite.router.
+		MatcherFunc(MatchEndpointGroup(suite.cfg)).
+		Path("/{report_name}/{group_type}/{group_name}").
+		Handler(suite.confHandler.Respond(ListEndpointGroupResults, "group"))
 
 	request, _ := http.NewRequest("GET", "/api/v2/results/Report_A/SITE/ST01?start_time=2015-06-20T12:00:00Z&end_time=2015-06-23T23:00:00Z&granularity=daily", strings.NewReader(""))
-
 	request.Header.Set("x-api-key", suite.clientkey)
-	vars := map[string]string{}
-	vars["report_name"] = "Report_A"
-	vars["group_type"] = "SITE"
-	vars["group_name"] = "ST01"
-	// context.Set(request, 0, vars)
-	context.DefaultContext.Set(request, mux.ContextKey(0), vars)
 
-	code, _, output, _ := ListEndpointGroupResults(request, suite.cfg)
-	fmt.Println(string(output))
+	response := httptest.NewRecorder()
+
+	suite.router.ServeHTTP(response, request)
+
+	fmt.Println(response.Body)
 	endpointGrouAvailabitiyXML := ` <root>
    <Report name="Report_A">
-     <EndpointGroup name="ST01" SuperGroup="GROUP_A">
+     <EndpointGroup name="ST01" group="GROUP_A">
        <Availability timestamp="2015-06-22" availability="66.7" reliability="54.6"></Availability>
        <Availability timestamp="2015-06-23" availability="100" reliability="100"></Availability>
-     </EndpointGroup>
-     <EndpointGroup name="ST02" SuperGroup="GROUP_A">
-       <Availability timestamp="2015-06-22" availability="70" reliability="45"></Availability>
-       <Availability timestamp="2015-06-23" availability="43.5" reliability="56"></Availability>
      </EndpointGroup>
    </Report>
  </root>`
 
 	// Check that we must have a 200 ok code
-	suite.Equal(200, code, "Internal Server Error")
+	suite.Equal(200, response.Code, "Internal Server Error")
 	// Compare the expected and actual xml response
-	suite.Equal(endpointGrouAvailabitiyXML, string(output), "Response body mismatch")
+	suite.Equal(endpointGrouAvailabitiyXML, response.Body.String(), "Response body mismatch")
 
 }
 
