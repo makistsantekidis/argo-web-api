@@ -39,6 +39,14 @@ func init() {
 const zuluForm = "2006-01-02T15:04:05Z"
 const ymdForm = "20060102"
 
+type serviceFlavorResultQuery struct {
+	Name        string `bson:"name"`
+	Granularity string `bson:"-"`
+	StartTime   string `bson:"start_time"` // UTC time in W3C format
+	EndTime     string `bson:"end_time"`   // UTC time in W3C format
+	Report      string `bson:"report"`
+}
+
 type endpointGroupResultQuery struct {
 	Name        string `bson:"name"`
 	Granularity string `bson:"-"`

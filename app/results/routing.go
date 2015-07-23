@@ -83,6 +83,21 @@ func HandleSubrouter(s *mux.Router, confhandler *respond.ConfHandler) {
 		Name("Group/LGroup Names").
 		Handler(confhandler.Respond(ListEndpointGroupResults))
 
+	// Route for request "api/v2/results/{report_name}/{group_type}/{group_name}/services"
+	// matches only endpoint groups
+	serviceSubrouter := groupSubrouter.PathPrefix("/services").Subrouter()
+	
+	serviceSubrouter.
+		Methods("GET").
+		Name("Services").
+		Handler(confhandler.Respond(ListServiceFlavorResults))
+
+	serviceSubrouter.
+		Path("/{service_flavor}").
+		Methods("GET").
+		Name("Services/Service Flavor").
+		Handler(confhandler.Respond(ListServiceFlavorResults))
+
 }
 
 func matchEndpointGroup(cfg config.Config) mux.MatcherFunc {
