@@ -73,7 +73,8 @@ func createView(results []EndpointGroupInterface, format string) ([]byte, error)
 			&Availability{
 				Timestamp:    timestamp.Format(customForm[1]),
 				Availability: fmt.Sprintf("%g", row.Availability),
-				Reliability:  fmt.Sprintf("%g", row.Reliability)})
+				Reliability:  fmt.Sprintf("%g", row.Reliability),
+				Unknown:      fmt.Sprintf("%g", row.Unknown)})
 	}
 	if strings.ToLower(format) == "json" {
 		return json.MarshalIndent(docRoot, " ", "  ")

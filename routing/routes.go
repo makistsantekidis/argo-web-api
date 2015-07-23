@@ -44,25 +44,16 @@ import (
 	"github.com/argoeu/argo-web-api/app/tenants"
 )
 
-var subroutes = SubRoutes{
+var subroutes = SubRouters{
 	{"results", "/results", results.HandleSubrouter},
 }
 
 var routes = Routes{
 
-	//-----------------------------------New requests, need to fill in the ... functions---------------------------------------------
-	// {"groups of specific type",     "GET",      "/results/{report}/{group_type}",                                                   },
-	// {"Group of groups",             "GET",      "/results/{report}/{group_type}/{group}",                                           },
-	// {"Endpoint group in group",     "GET",      "/results/{report}/{group_type}/{group}/{lgroup_type}/{lgroup}",                    },
-	// {"All services of group",       "GET",      "/results/{report}/{group_type}/{group}/{lgroup_type}/{lgroup}/services",           },
-	// {"Specific service of group",   "GET",      "/results/{report}/{group_type}/{group}/{lgroup_type}/{lgroup}/services/{service}", },
-	// {"All services of group",       "GET",      "/results/{report}/{lgroup_type}/{lgroup}/services",                                },
-	// {"Specific service of group",   "GET",      "/results/{report}/{lgroup_type}/{lgroup}/services/{service}",                      },
-
 	//-----------------------------------Old requests for here on down -------------------------------------------------
 	{"group_availability", "GET", "/group_availability", endpointGroupAvailability.List},
 	{"group_groups_availability", "GET", "/group_groups_availability", groupGroupsAvailability.List},
-	{"endpoint_group_availability", "POST", "/endpoint_group_availability", endpointGroupAvailability.List},
+	{"endpoint_group_availability", "GET", "/endpoint_group_availability", endpointGroupAvailability.List},
 	{"service_flavor_availability", "GET", "/service_flavor_availability", serviceFlavorAvailability.List},
 	{"AP List", "GET", "/AP", availabilityProfiles.List},
 	{"AP Create", "POST", "/AP", availabilityProfiles.Create},

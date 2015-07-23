@@ -39,11 +39,12 @@ import (
 
 func main() {
 
-	//Create the server router
+	//Create the server router and add the middleware
 	var mainRouter http.Handler
 	mainRouter = routing.NewRouter(cfg)
 	mainRouter = handlers.CombinedLoggingHandler(os.Stdout, mainRouter)
 	// mainRouter = handlers.CompressHandler(mainRouter)
+
 	http.Handle("/", mainRouter)
 
 	//Cache
@@ -67,7 +68,6 @@ func main() {
 	server := &http.Server{Addr: cfg.Server.Bindip + ":" + strconv.Itoa(cfg.Server.Port), Handler: nil, TLSConfig: config}
 	//Web service binds to server. Requests served over HTTPS.
 
-	// err := server.ListenAndServe(cfg.Server.Cert, cfg.Server.Privkey)
 	err := server.ListenAndServeTLS(cfg.Server.Cert, cfg.Server.Privkey)
 
 	if err != nil {

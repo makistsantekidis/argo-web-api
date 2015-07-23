@@ -27,13 +27,9 @@
 package respond
 
 import (
-	"bytes"
-	"compress/gzip"
-	"compress/zlib"
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/argoeu/argo-web-api/utils/caches"
 	"github.com/argoeu/argo-web-api/utils/config"
@@ -46,32 +42,13 @@ type list []interface{}
 const zuluForm = "2006-01-02T15:04:05Z"
 const ymdForm = "20060102"
 
+// ConfHandler Keeps all the configuration/variables required by all the requests
 type ConfHandler struct {
-	Cfg config.Config
-	// handler func(config.Config, http.ResponseWriter, *http.Request) (int, http.Header, []byte, error)
+	Config config.Config
 }
 
-// func (ah *ConfHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-// 	// Updated to pass ah.appContext as a parameter to our handler type.
-// 	code, header, output, err := ah.handler(ah.Cfg, w, r)
-// 	if err != nil {
-// 		log.Printf("HTTP %d: %q, %s, %s", code, err, header, output)
-// 		switch code {
-// 		case http.StatusNotFound:
-// 			http.NotFound(w, r)
-// 			// And if we wanted a friendlier error page, we can
-// 			// now leverage our context instance - e.g.
-// 			// err := ah.renderTemplate(w, "http_404.tmpl", nil)
-// 		case http.StatusInternalServerError:
-// 			http.Error(w, http.StatusText(code), code)
-// 		default:
-// 			http.Error(w, http.StatusText(code), code)
-// 		}
-// 	}
-// }
-
 // Respond will be called to answer to http requests to the PI
-func (ah *ConfHandler) Respond(fn func(r *http.Request, cfg config.Config) (int, http.Header, []byte, error), name string) http.HandlerFunc {
+func (confhandler *ConfHandler) Respond(fn func(r *http.Request, cfg config.Config) (int, http.Header, []byte, error)) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		defer func() {
@@ -79,31 +56,32 @@ func (ah *ConfHandler) Respond(fn func(r *http.Request, cfg config.Config) (int,
 				logging.HandleError(r)
 			}
 		}()
-		code, header, output, err := fn(r, ah.Cfg)
+		code, header, output, err := fn(r, confhandler.Config)
 
 		if code == http.StatusInternalServerError {
 			log.Panic("Internal Server Error:", err)
 		}
 
-		encoding := strings.Split(r.Header.Get("Accept-Encoding"), ",")[0] //get the first accepted encoding
-		if (ah.Cfg.Server.Gzip) == true && r.Header.Get("Accept-Encoding") != "" {
-			var b bytes.Buffer
-			if encoding == "gzip" {
-				writer := gzip.NewWriter(&b)
-				writer.Write(output)
-				writer.Close()
-				w.Header().Set("Content-Encoding", "gzip")
+		// TODO: Remove this after testing the gorilla handlers.CompressHandler middleware
+		// encoding := strings.Split(r.Header.Get("Accept-Encoding"), ",")[0] //get the first accepted encoding
+		// if (confhandler.Cfg.Server.Gzip) == true && r.Header.Get("Accept-Encoding") != "" {
+		// 	var b bytes.Buffer
+		// 	if encoding == "gzip" {
+		// 		writer := gzip.NewWriter(&b)
+		// 		writer.Write(output)
+		// 		writer.Close()
+		// 		w.Header().Set("Content-Encoding", "gzip")
+		//
+		// 	} else if encoding == "deflate" {
+		// 		writer := zlib.NewWriter(&b)
+		// 		writer.Write(output)
+		// 		writer.Close()
+		// 		w.Header().Set("Content-Encoding", "deflate")
+		// 	}
+		// 	output = b.Bytes()
+		// }
 
-			} else if encoding == "deflate" {
-				writer := zlib.NewWriter(&b)
-				writer.Write(output)
-				writer.Close()
-				w.Header().Set("Content-Encoding", "deflate")
-			}
-			output = b.Bytes()
-		}
 		//Add headers
-
 		header.Set("Content-Length", fmt.Sprintf("%d", len(output)))
 
 		for name, values := range header {

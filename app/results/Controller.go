@@ -45,7 +45,7 @@ import (
 // THIS CONTROLLER IS JUST A DEMO AND IS NOT SOMETHING THAT WORKS.
 // TODO: WRITE AN ACTUAL CONTROLLER FOR AVAILABILITY
 
-// List endpoint group availabilities according to the http request
+// ListEndpointGroupResults endpoint group availabilities according to the http request
 func ListEndpointGroupResults(r *http.Request, cfg config.Config) (int, http.Header, []byte, error) {
 
 	//STANDARD DECLARATIONS START
@@ -69,14 +69,14 @@ func ListEndpointGroupResults(r *http.Request, cfg config.Config) (int, http.Hea
 	// Parse the request into the input
 	urlValues := r.URL.Query()
 	vars := mux.Vars(r)
-	fmt.Println(vars)
-	lgroup_name := vars["lgroup_name"]
-	if lgroup_name == "" {
-		lgroup_name = vars["group_name"]
+
+	endpointGroupName := vars["lgroup_name"]
+	if endpointGroupName == "" {
+		endpointGroupName = vars["group_name"]
 	}
 
 	input := endpointGroupResultQuery{
-		Name:        lgroup_name,
+		Name:        endpointGroupName,
 		Granularity: urlValues.Get("granularity"),
 		Format:      strings.ToLower(urlValues.Get("format")),
 		StartTime:   urlValues.Get("start_time"),
@@ -105,17 +105,32 @@ func ListEndpointGroupResults(r *http.Request, cfg config.Config) (int, http.Hea
 
 	results := []EndpointGroupInterface{}
 
+	ts, _ := time.Parse(zuluForm, input.StartTime)
+	te, _ := time.Parse(zuluForm, input.EndTime)
+	tsYMD, _ := strconv.Atoi(ts.Format(ymdForm))
+	teYMD, _ := strconv.Atoi(te.Format(ymdForm))
+
+	// Construct the query to mongodb based on the input
+	filter := bson.M{
+		"date":   bson.M{"$gte": tsYMD, "$lte": teYMD},
+		"report": input.Report,
+	}
+
+	if len(input.Name) > 0 {
+		// filter["name"] = bson.M{"$in": input.Name}
+		filter["name"] = input.Name
+	}
+
 	// Select the granularity of the search daily/monthly
 	if len(input.Granularity) == 0 || strings.ToLower(input.Granularity) == "daily" {
 		customForm[0] = "20060102"
 		customForm[1] = "2006-01-02"
-		query := Daily(input)
+		query := DailyEndpointGroup(filter)
 		err = mongo.Pipe(session, tenantDbConfig.Db, "endpoint_group_ar", query, &results)
-
 	} else if strings.ToLower(input.Granularity) == "monthly" {
 		customForm[0] = "200601"
 		customForm[1] = "2006-01"
-		query := Monthly(input)
+		query := MonthlyEndpointGroup(filter)
 		err = mongo.Pipe(session, tenantDbConfig.Db, "endpoint_group_ar", query, &results)
 	}
 	// mongo.Find(session, tenantDbConfig.Db, "endpoint_group_ar", bson.M{}, "_id", &results)
@@ -155,17 +170,11 @@ func prepareFilter(input endpointGroupResultQuery) bson.M {
 		filter["name"] = input.Name
 	}
 
-	// if len(input.Group) > 0 {
-	// 	filter["supergroup"] = bson.M{"$in": input.Group}
-	// }
-
 	return filter
 }
 
-// Daily query to aggregate daily results from mongodb
-func Daily(input endpointGroupResultQuery) []bson.M {
-	filter := prepareFilter(input)
-
+// DailyEndpointGroup query to aggregate daily results from mongodb
+func DailyEndpointGroup(filter bson.M) []bson.M {
 	// Mongo aggregation pipeline
 	// Select all the records that match q
 	// Project to select just the first 8 digits of the date YYYYMMDD
@@ -176,6 +185,7 @@ func Daily(input endpointGroupResultQuery) []bson.M {
 			"date":         bson.M{"$substr": list{"$date", 0, 8}},
 			"availability": 1,
 			"reliability":  1,
+			"unknown":      1,
 			"report":       1,
 			"supergroup":   1,
 			"name":         1}},
@@ -188,10 +198,8 @@ func Daily(input endpointGroupResultQuery) []bson.M {
 	return query
 }
 
-// Monthly query to aggregate monthly results from mongodb
-func Monthly(input endpointGroupResultQuery) []bson.M {
-
-	filter := prepareFilter(input)
+// MonthlyEndpointGroup query to aggregate monthly results from mongodb
+func MonthlyEndpointGroup(filter bson.M) []bson.M {
 
 	// Mongo aggregation pipeline
 	// Select all the records that match q
@@ -218,6 +226,7 @@ func Monthly(input endpointGroupResultQuery) []bson.M {
 			"name":       "$_id.name",
 			"report":     "$_id.report",
 			"supergroup": "$_id.supergroup",
+			"unknown":    "$avgunkown",
 			"avguptime":  1,
 			"avgunkown":  1,
 			"avgdown":    1,

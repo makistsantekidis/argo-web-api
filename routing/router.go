@@ -43,24 +43,23 @@ type Route struct {
 	HandlerFunc func(*http.Request, config.Config) (int, http.Header, []byte, error)
 }
 
-type SubRoute struct {
+type SubRouter struct {
 	Name             string
 	Pattern          string
 	SubrouterHandler func(*mux.Router, *respond.ConfHandler)
 }
 
 type Routes []Route
-type SubRoutes []SubRoute
+type SubRouters []SubRouter
 
+// NewRouter creates the main router that will be used by the api
 func NewRouter(cfg config.Config) *mux.Router {
 
-	confhandler := respond.ConfHandler{cfg}
+	confhandler := respond.ConfHandler{Config: cfg}
 	router := mux.NewRouter().StrictSlash(true)
 	for _, route := range routes {
-		// var handler http.Handler
 
-		// handler := route.HandlerFunc
-		handler := confhandler.Respond(route.HandlerFunc, route.Name)
+		handler := confhandler.Respond(route.HandlerFunc)
 		router.
 			PathPrefix("/api/v1").
 			Methods(route.Method).
@@ -80,6 +79,7 @@ func NewRouter(cfg config.Config) *mux.Router {
 	return router
 }
 
+// PrintRoutes Attempts to print all register routes when called using mux.Router.Walk(PrintRoutes)
 func PrintRoutes(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 	url, _ := route.URL()
 	fmt.Println(route.GetName(), url)

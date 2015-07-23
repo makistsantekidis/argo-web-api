@@ -40,13 +40,13 @@ const zuluForm = "2006-01-02T15:04:05Z"
 const ymdForm = "20060102"
 
 type endpointGroupResultQuery struct {
-	Name        string `bson:name`
-	Granularity string `bson:-`
-	Format      string `bson:-`
-	StartTime   string `bson:start_time` // UTC time in W3C format
-	EndTime     string `bson:end_time`   // UTC time in W3C format
-	Report      string `bson:report`
-	Group       string `bson:supergroup`
+	Name        string `bson:"name"`
+	Granularity string `bson:"-"`
+	Format      string `bson:"-"`
+	StartTime   string `bson:"start_time"` // UTC time in W3C format
+	EndTime     string `bson:"end_time"`   // UTC time in W3C format
+	Report      string `bson:"report"`
+	Group       string `bson:"supergroup"`
 }
 
 type EndpointGroupInterface struct {
@@ -69,6 +69,7 @@ type Availability struct {
 	Timestamp    string   `xml:"timestamp,attr" json:"timestamp"`
 	Availability string   `xml:"availability,attr" json:"availability"`
 	Reliability  string   `xml:"reliability,attr" json:"reliability"`
+	Unknown      string   `xml:"unknown,attr" json:"unknown"`
 }
 
 //EndpointGroup struct for formating xml/json
@@ -76,17 +77,17 @@ type EndpointGroup struct {
 	XMLName      xml.Name `xml:"EndpointGroup" json:"-"`
 	Name         string   `xml:"name,attr" json:"name"`
 	SuperGroup   string   `xml:"group,attr" json:"group"`
-	Availability []*Availability
+	Availability []interface{}
 }
 
 //Report struct for formating xml/json
 type Report struct {
 	XMLName       xml.Name `xml:"Report" json:"-"`
 	Name          string   `xml:"name,attr" json:"name"`
-	EndpointGroup []*EndpointGroup
+	EndpointGroup []interface{}
 }
 
 type root struct {
 	XMLName xml.Name `xml:"root" json:"-"`
-	Report  []*Report
+	Report  []interface{}
 }

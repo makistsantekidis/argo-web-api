@@ -27,7 +27,6 @@
 package results
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -81,7 +80,7 @@ func (suite *endpointGroupAvailabilityTestSuite) SetupTest() {
 	suite.tenantDbConf.Store = "ar"
 	suite.clientkey = "secretkey"
 
-	// Create Router
+	// Create router and confhandler for test
 	suite.confHandler = respond.ConfHandler{suite.cfg}
 	suite.router = mux.NewRouter().PathPrefix("/api/v2/results").Subrouter()
 	HandleSubrouter(suite.router, &suite.confHandler)
@@ -243,10 +242,6 @@ func (suite *endpointGroupAvailabilityTestSuite) SetupTest() {
 
 // TestListEndpointGroupAvailability test if daily results are returned correctly
 func (suite *endpointGroupAvailabilityTestSuite) TestListEndpointGroupAvailability() {
-	suite.router.
-		MatcherFunc(MatchEndpointGroup(suite.cfg)).
-		Path("/{report_name}/{group_type}/{group_name}").
-		Handler(suite.confHandler.Respond(ListEndpointGroupResults, "group"))
 
 	request, _ := http.NewRequest("GET", "/api/v2/results/Report_A/SITE/ST01?start_time=2015-06-20T12:00:00Z&end_time=2015-06-23T23:00:00Z&granularity=daily", strings.NewReader(""))
 	request.Header.Set("x-api-key", suite.clientkey)
@@ -255,7 +250,6 @@ func (suite *endpointGroupAvailabilityTestSuite) TestListEndpointGroupAvailabili
 
 	suite.router.ServeHTTP(response, request)
 
-	fmt.Println(response.Body)
 	endpointGrouAvailabitiyXML := ` <root>
    <Report name="Report_A">
      <EndpointGroup name="ST01" group="GROUP_A">

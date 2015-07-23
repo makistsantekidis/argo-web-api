@@ -49,7 +49,7 @@ func HandleSubrouter(s *mux.Router, confhandler *respond.ConfHandler) {
 	// Route for request "/api/v2/results/{report_name}"
 	reportSubrouter := s.PathPrefix("/{report_name}").Subrouter()
 	// TODO: list reports with the name {reportn_name}
-	// reportSubrouter.Path("/").Name("reports").Handler(respond.Respond(ListReports, "reports", cfg))
+	// reportSubrouter.Name("reports").Handler(confhandler.Respond(ListReports))
 
 	// Route for request "api/v2/results/{report_name}/{group_type}"
 	groupTypeSubrouter := reportSubrouter.PathPrefix("/{group_type}").Subrouter()
@@ -67,27 +67,32 @@ func HandleSubrouter(s *mux.Router, confhandler *respond.ConfHandler) {
 	// Route for request "api/v2/results/{report_name}/{group_type}/{group_name}"
 	// matches only endpoint groups
 	groupSubrouter := groupTypeSubrouter.PathPrefix("/{group_name}").Subrouter()
-	groupSubrouter.Path("/").
+	groupSubrouter.
 		Methods("GET").
 		Name("Group Name").
-		MatcherFunc(MatchEndpointGroup(confhandler.Cfg)).
-		Handler(confhandler.Respond(ListEndpointGroupResults, "group name"))
+		MatcherFunc(matchEndpointGroup(confhandler.Config)).
+		Handler(confhandler.Respond(ListEndpointGroupResults))
+
+	// groupSubrouter.
+	// 	Methods("GET").
+	// 	Name("Group Name").
+	// 	Handler(confhandler.Respond(ListSuperGroupResults, "group name"))
 
 	groupSubrouter.Methods("GET").
 		Path("/{lgroup_type}/{lgroup_name}").
 		Name("Group/LGroup Names").
-		Handler(confhandler.Respond(ListEndpointGroupResults, "group/lgroup names"))
+		Handler(confhandler.Respond(ListEndpointGroupResults))
 
 }
 
-func MatchEndpointGroup(cfg config.Config) mux.MatcherFunc {
+func matchEndpointGroup(cfg config.Config) mux.MatcherFunc {
 	return func(r *http.Request, routematch *mux.RouteMatch) bool {
 		// vars := mux.Vars(r)
 		// name := vars["group_name"]
 		// or
 		// name := routematch.Vars
 		// But for some reason none of these work so this is a workaround:
-		// TODO: open issue on gorilla/mux issue tracker
+		// TODO: create reproduction code and open issue on gorilla/mux issue tracker
 
 		name := strings.Split(strings.Split(strings.Split(r.URL.String(), "results/")[1], "/")[2], "?")[0]
 		tenantcfg, err := authentication.AuthenticateTenant(r.Header, cfg)
