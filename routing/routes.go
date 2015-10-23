@@ -28,7 +28,7 @@ import (
 	"github.com/ARGOeu/argo-web-api/app/metricProfiles"
 	"github.com/ARGOeu/argo-web-api/app/metricResult"
 	"github.com/ARGOeu/argo-web-api/app/operationsProfiles"
-	"github.com/ARGOeu/argo-web-api/app/recomputations2"
+	"github.com/ARGOeu/argo-web-api/app/recomputations"
 	"github.com/ARGOeu/argo-web-api/app/reports"
 	"github.com/ARGOeu/argo-web-api/app/results"
 	"github.com/ARGOeu/argo-web-api/app/statusEndpointGroups"
@@ -45,7 +45,7 @@ var routesV2 = []RouteV2{
 	{"Status service timelines", "/status", statusServices.HandleSubrouter},
 	{"Status endpoint group timelines", "/status", statusEndpointGroups.HandleSubrouter},
 	{"Status endpoint timelines", "/status", statusEndpoints.HandleSubrouter},
-	{"Recomputations", "", recomputations2.HandleSubrouter},
+	{"Recomputations", "", recomputations.HandleSubrouter},
 	{"Metric Profiles", "", metricProfiles.HandleSubrouter},
 	{"Reports", "", reports.HandleSubrouter},
 	{"Aggregation Profiles", "", aggregationProfiles.HandleSubrouter},

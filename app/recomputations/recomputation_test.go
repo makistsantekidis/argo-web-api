@@ -20,7 +20,7 @@
  *
  */
 
-package recomputations2
+package recomputations
 
 import (
 	"bytes"
@@ -69,7 +69,7 @@ func (suite *RecomputationsProfileTestSuite) SetupTest() {
     [mongodb]
     host = "127.0.0.1"
     port = 27017
-    db = "AR_test_recomputations2"
+    db = "AR_test_recomputations"
     `
 
 	_ = gcfg.ReadStringInto(&suite.cfg, testConfig)
@@ -81,7 +81,7 @@ func (suite *RecomputationsProfileTestSuite) SetupTest() {
 	suite.tenantDbConf = config.MongoConfig{
 		Host:     "localhost",
 		Port:     27017,
-		Db:       "AR_test_recomputations2_tenant",
+		Db:       "AR_test_recomputations_tenant",
 		Password: "h4shp4ss",
 		Username: "dbuser",
 		Store:    "ar",

@@ -20,7 +20,7 @@
  *
  */
 
-package recomputations2
+package recomputations
 
 import (
 	"github.com/ARGOeu/argo-web-api/respond"
